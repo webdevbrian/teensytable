@@ -1,5 +1,6 @@
-// BK Pool table system.
-// 9-6-2017
+// TeensyTable
+// v1.0
+// BKINNEY 9.4.2017
 
 #include <Audio.h>
 #include <Wire.h>
@@ -29,10 +30,10 @@ AudioControlSGTL5000     sgtl5000_1;
 #define SDCARD_SCK_PIN   14
 
 // LED Strip setup
-//#define PIN 12
-//#define LENGTH 24
+#define PIN 21
+#define LENGTH 1
 
-//Adafruit_NeoPixel strip = Adafruit_NeoPixel(LENGTH, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(LENGTH, PIN, NEO_GRB + NEO_KHZ800);
 
 /*
  * Pocket triggers
@@ -73,11 +74,12 @@ Bounce buttonSelect = Bounce(20, 15); // Select - Select game
  */
 SimpleTimer timer;
 int systemState = 0;
+int menuState = systemState;
 int team1Score = 0;
 int team2Score = 0;
-int pixels = 24;
-int frames = 48;
-int fps = 24;
+int pixels = 1;
+int frames = 7;
+int fps = 3;
 bool started = false;
 bool paused = false;
 
@@ -185,7 +187,7 @@ void bgmHandler(String BGM) {
   if (playSdWav1.isPlaying() == false) {
     Serial.println("Started playing BGM " + BGMFile+ "\n");
     playSdWav1.play(BGMFile.c_str ());
-    delay(10); // wait for library to parse WAV info
+    delay(10);
   }
 }
 
@@ -205,6 +207,33 @@ void sfxHandler(String SFX) {
   delay(10); // wait for library to parse WAV info
 }
 
+
+/*
+ * LED STRIP PATTERNS
+ * 24 WS2812B NEOPixels in single strip
+ * 4 LEDs per pocket.
+ * Pocket order: L1, L2, L3, R3, R2, R1 (see trigger layout above)
+ * 
+ * L1 LEDs: 1-4
+ * L2 LEDs: 5-8
+ * L3 LEDs: 9-12
+ * R3 LEDs: 13-16
+ * R2 LEDs: 17-20
+ * R1 LEDs: 21-24
+ * 
+ * Pattern builder: https://hohmbody.com/flickerstrip/lightwork/
+ * - 24 long strip @ 12 FPS @ 6 Frames
+ * 
+ * 
+ * 1. Single pocket patterns
+ * 2. Full strip patterns (all pockets)
+ */
+
+ // Single pocket patterns
+ const byte data[] PROGMEM = {255,0,0,255,255,0,0,255,0,0,255,255,0,0,255,150,0,255,255,0,225};
+
+ // Full strip patterns (all pockets)
+
 /* == LED Strip Handler ==
  *  
  * Handle controlling the LED strip
@@ -212,7 +241,7 @@ void sfxHandler(String SFX) {
  * PARAMS: String of the pattern name defined in the LEDStriphandler
  * 
  */
- 
+ int currentFrame = 0;
 void LEDStripHandler(String Pattern) {
   /*
    * LED Patterns
@@ -220,13 +249,7 @@ void LEDStripHandler(String Pattern) {
    * 24 LEDs, 24FPS @ 48 Frames
    * 
    */
-
-  /*
-  int currentFrame = 0;
   
-  while(Pattern == "redAntCrawl"){
-    const byte data[] PROGMEM = {255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0};
-
     for (int i=0; i<LENGTH; i++) {
       int pixelIndex = i % pixels;
       int index = currentFrame*pixels*3 + pixelIndex*3;
@@ -237,9 +260,10 @@ void LEDStripHandler(String Pattern) {
     strip.show();
     currentFrame ++;
     if (currentFrame >= frames) currentFrame = 0;
+    Serial.print("fired LED\n");
     delay(1000/fps);
-  }
-  */
+
+  
 }
 
 /* == Back to menu ==
@@ -262,11 +286,16 @@ void stateHandler(int State) {
   // MAIN MENU | Default state when turned on
   while(State == 0){
 
-    int menuState = systemState;
-
     // Initialize mixer and volume controls
     mixerControl();
     volumeControl();
+
+    //LEDStripHandler("test");
+
+    // Stop all looping background sound SFX
+    if (playSdWav1.isPlaying() == true) {
+      playSdWav1.stop();
+    }
     
     // Welcome message
     if(!started) {
@@ -288,6 +317,17 @@ void stateHandler(int State) {
 
       Serial.print("menuState #");
       Serial.print(menuState);
+      Serial.print("  ");
+
+      // Start button cycles through menu options
+      // sets systemState
+      if (menuState < 6) {
+        menuState++;
+        Serial.print(menuState);
+        Serial.print("  ");
+      } else {
+        menuState = 0;
+      }
 
       if (menuState == 0) {
         sfxHandler("uimenu");
@@ -298,18 +338,13 @@ void stateHandler(int State) {
       } else if (menuState == 3) {
         sfxHandler("uiarnie");
       } else if (menuState == 4) {
-        Serial.print("Game 1");
+        sfxHandler("uifart");
       } else if (menuState == 5) {
+        Serial.print("Game 1");
+      } else if (menuState == 6) {
         Serial.print("Game 2");
       } 
-
-      // Start button cycles through menu options
-      // sets systemState
-      if (menuState < 5) {
-        menuState++;
-      } else {
-        menuState = 0;
-      }
+      
     }
 
     if (buttonSelect.fallingEdge()) {
@@ -322,21 +357,22 @@ void stateHandler(int State) {
       */
 
       // Go to selected game state
-      stateHandler(menuState);
       Serial.print("Select button pressed ");
+      stateHandler(menuState);
+      
     }
   }
 
   // MARIO SOUNDBOARD
   while(State == 1){
 
-  /*
-   * 1. Handle Buttons for triggers and menu button
-   * 2. Handle SFX and music
-   * 3. Handle LED effects
-   * 4. Handle switching state back to main menu
-   * 
-  */
+    /*
+     * 1. Handle Buttons for triggers and menu button
+     * 2. Handle SFX and music
+     * 3. Handle LED effects
+     * 4. Handle switching state back to main menu
+     * 
+    */
 
     // Initialize mixer and volume controls
     mixerControl();
@@ -361,36 +397,21 @@ void stateHandler(int State) {
       delay(10);
     }
 
-    // Handle system pause state to go back to main menu
-    if (buttonStart.fallingEdge()) {
-      // Pause system, enter while loop
-      paused = true;
-
-      while(paused == true){
-        // System is paused, play SFX indicating paused status and begin timer
-        sfxHandler("uipstbtn");
-
-        // count down timer that will set systemstate to 0 (main menu)
-        byte timerId = timer.setTimeout(10000, goBackToMainMenu);
-        timer.enable(timerId);
-
-        // If the user hits the start button again, disable timer, resume game
-        if (buttonStart.fallingEdge()) {
-          timer.disable(timerId);
-          paused = false;
-        }
-      }
-    }
-
     // Handle pocket triggers
     if (triggerL1.fallingEdge()) {
       // Play random soundboard pocket sfx
-      String rand = random(14);
-      String rndSFX = "fart" + rand;
+      String rand = random(11);
+      String rndSFX = "sm" + rand;
       
       sfxHandler(rndSFX);
 
       Serial.print("L1 button pressed ");
+    }
+
+    // Handle system pause state to go back to main menu
+    if (buttonStart.fallingEdge()) {
+      playSdWav1.stop();
+      stateHandler(0);
     }
 
     //LEDStripHandler("redAntCrawl");
@@ -399,30 +420,167 @@ void stateHandler(int State) {
   // NAPOLEON SOUNDBOARD
   while(State == 2){
 
-  /*
-   * 1. Handle Buttons for triggers and menu button
-   * 2. Handle SFX and music
-   * 3. Handle LED effects
-   * 4. Handle switching state back to main menu
-   * 
-  */
+    /*
+     * 1. Handle Buttons for triggers and menu button
+     * 2. Handle SFX and music
+     * 3. Handle LED effects
+     * 4. Handle switching state back to main menu
+     * 
+    */
+
     
-    //LEDStripHandler("blueAntCrawl");
+  
+    // Initialize mixer and volume controls
+    mixerControl();
+    volumeControl();
+  
+    triggerL1.update();
+    triggerL2.update();
+    triggerL3.update();
+    triggerR1.update();
+    triggerR2.update();
+    triggerR3.update();
+    buttonStart.update();
+  
+    // Loop soundboard background music and play at random
+    if (playSdWav1.isPlaying() == false) {
+      bgmHandler("ndbgm");
+      delay(10);
+    }
+  
+    // Handle pocket triggers
+    if (triggerL1.fallingEdge()) {
+      // Play random soundboard pocket sfx
+      String rand = random(7);
+      String rndSFX = "nd" + rand;
+      
+      sfxHandler(rndSFX);
+  
+      Serial.print("L1 button pressed ");
+    }
+
+    // Handle system pause state to go back to main menu
+    if (buttonStart.fallingEdge()) {
+      playSdWav1.stop();
+      stateHandler(0);
+    }
+
   }
   
   // ARNIE SOUNDBOARD
   while(State == 3){
-    
+
+    // Initialize mixer and volume controls
+    mixerControl();
+    volumeControl();
+  
+    triggerL1.update();
+    triggerL2.update();
+    triggerL3.update();
+    triggerR1.update();
+    triggerR2.update();
+    triggerR3.update();
+    buttonStart.update();
+  
+    // Loop soundboard background music and play at random
+    if (playSdWav1.isPlaying() == false) {    
+      bgmHandler("asbgm");
+      delay(10);
+    }
+  
+    // Handle pocket triggers
+    if (triggerL1.fallingEdge()) {
+      // Play random soundboard pocket sfx
+      String rand = random(4);
+      String rndSFX = "asp" + rand;
+      
+      sfxHandler(rndSFX);
+  
+      Serial.print("L1 button pressed ");
+    }
+
+    // Handle system pause state to go back to main menu
+    if (buttonStart.fallingEdge()) {
+      playSdWav1.stop();
+      stateHandler(0);
+    }
+
   }
 
-  // GAME 1
+  // FART SOUNDBOARD
   while(State == 4){
+
+    // Initialize mixer and volume controls
+    mixerControl();
+    volumeControl();
+  
+    triggerL1.update();
+    triggerL2.update();
+    triggerL3.update();
+    triggerR1.update();
+    triggerR2.update();
+    triggerR3.update();
+    buttonStart.update();
+  
+    // Loop soundboard background music and play at random
+    if (playSdWav1.isPlaying() == false) {
+      String rand = random(3);
+      String rndBGM = "fartbgm" + rand;
+      
+      bgmHandler(rndBGM);
+    }
+  
+    // Handle pocket triggers
+    if (triggerL1.fallingEdge()) {
+      // Play random soundboard pocket sfx
+      String rand = random(14);
+      String rndSFX = "fart" + rand;
+      
+      sfxHandler(rndSFX);
+  
+      Serial.print("L1 button pressed ");
+    }
+
+    // Handle system pause state to go back to main menu
+    if (buttonStart.fallingEdge()) {
+      playSdWav1.stop();
+      stateHandler(0); // Go to main menu
+    }
+
+  }
+
+
+  // GAME 1
+  while(State == 5){
+
+    // Initialize mixer and volume controls
+    mixerControl();
+    volumeControl();
+  
+    buttonStart.update();
     
+    // Handle system pause state to go back to main menu
+    if (buttonStart.fallingEdge()) {
+      playSdWav1.stop();
+      stateHandler(0);
+    }
+
   }
 
   // GAME 2
-  while(State == 5){
+  while(State == 6){
+  
+    // Initialize mixer and volume controls
+    mixerControl();
+    volumeControl();
+  
+    buttonStart.update();
     
+    // Handle system pause state to go back to main menu
+    if (buttonStart.fallingEdge()) {
+      playSdWav1.stop();
+      stateHandler(0);
+    }
   }
 }
 
